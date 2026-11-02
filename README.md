@@ -56,3 +56,14 @@ npm ci
 npm run build
 Pop-Location
 ```
+
+## Déploiement sur Vercel
+
+Le `Dockerfile` déploie l'application Spring Boot et le frontend ensemble avec le runtime Container de Vercel. Ce runtime est actuellement en bêta. Le profil PostgreSQL est activé dans l'image; H2 n'est pas adapté à un déploiement sans disque persistant.
+
+1. Importer le dépôt GitHub dans Vercel et choisir le preset **Container** si Vercel ne le détecte pas automatiquement.
+2. Ajouter une base PostgreSQL accessible depuis Internet et définir dans les variables du projet `DATABASE_URL` (format JDBC, par exemple `jdbc:postgresql://hote:5432/base?sslmode=require`), `DATABASE_USERNAME`, `DATABASE_PASSWORD` et `ADMIN_PASSWORD`.
+3. Définir `PORT` à `8080` dans les variables du projet Vercel.
+4. Ajouter les variables SMTP décrites ci-dessus si les courriels doivent être envoyés.
+
+Ne pas mettre de mot de passe ni d'URL contenant un secret dans le dépôt. Vercel fournira l'URL publique après le déploiement.

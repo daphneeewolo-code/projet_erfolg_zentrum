@@ -1,0 +1,7 @@
+.git
+.env
+.env.*
+data/
+target/
+frontend/node_modules/
+src/main/resources/static/
