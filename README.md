@@ -63,13 +63,28 @@ npm run build
 Pop-Location
 ```
 
-## Déploiement sur Render et Vercel
+## Déploiement provisoire sur Railway et Vercel
 
-Render héberge l'API Spring Boot et PostgreSQL; Vercel héberge le frontend et relaie `/api/*` vers l'API. Cette configuration garde les cookies de session sur le domaine du frontend.
+Railway peut héberger l'API Spring Boot et PostgreSQL; Vercel héberge le frontend et relaie `/api/*` vers l'API. Le proxy permet aux cookies de session de rester sur le domaine du frontend.
 
-1. Sur Render, créer un **Blueprint** à partir du dépôt GitHub et confirmer la création de `erfolg-zentrum-api` et `erfolg-zentrum-db` définis dans `render.yaml`. Le Blueprint génère `ADMIN_PASSWORD`; conserve-le depuis les variables d'environnement du service.
-2. Sur Vercel, importer le même dépôt et sélectionner `frontend` comme **Root Directory**. Garder Vite et `dist` comme répertoire de sortie.
-3. Dans les variables du projet Vercel, ajouter `BACKEND_URL=https://erfolg-zentrum-api.onrender.com`, puis redéployer. Si Render attribue une URL différente, utiliser cette URL à la place.
-4. Render Free peut mettre le service en veille; le premier appel après une période inactive peut être lent. La base PostgreSQL `basic-256mb` est un plan payant; vérifier le tarif affiché par Render avant de confirmer la création.
+### API et base PostgreSQL sur Railway
 
-Ajouter les variables SMTP sur Render si les courriels doivent être envoyés. Ne jamais publier de mot de passe ni de chaîne de connexion contenant des secrets.
+1. Dans Railway, crée un projet puis ajoute un service **PostgreSQL**.
+2. Ajoute au projet un service depuis le dépôt GitHub `daphneeewolo-code/projet_erfolg_zentrum`, branche `main`. Railway détecte le `Dockerfile` à la racine.
+3. Configure l'API pour écouter le port injecté `PORT` (déjà pris en charge par l'application). Dans les réglages du service, définis le health check sur `/api/config` et génère un domaine public HTTPS.
+4. Dans les variables du service API, configure `SPRING_PROFILES_ACTIVE=postgres`, `DATABASE_HOST=${{Postgres.PGHOST}}`, `DATABASE_PORT=${{Postgres.PGPORT}}`, `DATABASE_NAME=${{Postgres.PGDATABASE}}`, `DATABASE_USERNAME=${{Postgres.PGUSER}}` et `DATABASE_PASSWORD=${{Postgres.PGPASSWORD}}`. Remplace `Postgres` si tu as donné un autre nom au service de base de données.
+5. Configure `ADMIN_PASSWORD` avec un secret unique conservé dans un gestionnaire de mots de passe; `ADMIN_USERNAME` vaut `admin` par défaut. Ne réutilise pas le mot de passe local de démonstration.
+
+### Frontend sur Vercel
+
+1. Importe le même dépôt dans Vercel, avec **Root Directory** `frontend`, le preset **Vite** et le répertoire de sortie `dist`.
+2. Ajoute la variable Vercel `BACKEND_URL` avec le domaine HTTPS de l'API Railway, par exemple `https://nom-du-service.up.railway.app`, puis redéploie.
+3. Vérifie `/api/config`, une inscription fictive, la connexion administrateur et l'accès refusé aux pages protégées sans connexion.
+
+### Coûts, sauvegardes et limites avant production
+
+Vérifie les tarifs dans Railway avant de créer les services : la documentation consultée indique un abonnement Hobby à 5 USD/mois avec 5 USD de crédits d'utilisation inclus, tandis que le forfait gratuit dispose de 1 USD de crédit mensuel; les ressources au-delà des crédits sont facturées selon leur consommation. Le montant réel dépend du temps d'exécution, de la mémoire, du CPU, du stockage et du trafic. Vercel et un nom de domaine personnalisé peuvent aussi entraîner des coûts.
+
+Les sauvegardes Railway intégrées ont des rétentions distinctes : quotidiennes 6 jours, hebdomadaires 27 jours et mensuelles 89 jours. Elles ne satisfont pas à elles seules la décision du cahier des charges (sauvegarde quotidienne conservée 90 jours avec restauration testée chaque mois). Avant d'y mettre des données réelles d'élèves, il faut donc ajouter et tester une sauvegarde externe chiffrée avec la rétention convenue et documenter la restauration.
+
+Ce déploiement reste un pilote : les modules élèves, responsables, enseignants, classes/années scolaires, présences géolocalisées, audit et autres fonctions du cahier ne sont pas encore tous implémentés. Le cahier demande aussi un domaine `.com`; le domaine Railway/Vercel fourni par défaut ne suffit pas à valider cette exigence. Ne pas saisir de données personnelles réelles avant d'avoir terminé ces points et la recette.
