@@ -59,13 +59,13 @@ npm run build
 Pop-Location
 ```
 
-## Déploiement sur Vercel
+## Déploiement sur Render et Vercel
 
-Vercel héberge le frontend React; l'API Spring Boot doit être hébergée séparément sur un service compatible avec les conteneurs et reliée à une base PostgreSQL persistante.
+Render héberge l'API Spring Boot et PostgreSQL; Vercel héberge le frontend et relaie `/api/*` vers l'API. Cette configuration garde les cookies de session sur le domaine du frontend.
 
-1. Importer le dépôt GitHub dans Vercel. Dans **Root Directory**, choisir `frontend`; utiliser le preset **Vite** et le répertoire de sortie `dist`.
-2. Après avoir déployé l'API, ajouter la variable Vercel `VITE_API_BASE_URL` avec son origine publique, par exemple `https://api.example.com` (sans `/` final), puis redéployer le frontend.
-3. Sur l'hébergement de l'API, définir `DATABASE_URL` (format JDBC, par exemple `jdbc:postgresql://hote:5432/base?sslmode=require`), `DATABASE_USERNAME`, `DATABASE_PASSWORD` et `ADMIN_PASSWORD`. Définir aussi `APP_CORS_ALLOWED_ORIGIN` à l'origine exacte du frontend Vercel, `SESSION_COOKIE_SECURE=true` et `CSRF_COOKIE_SECURE=true`. La capacité s’ajuste avec `APP_ENROLLMENT_CAPACITY` (20 par défaut).
-4. Pour éviter le blocage des cookies de session par les navigateurs, utiliser un domaine personnalisé commun pour le frontend et l'API (par exemple `www.example.com` et `api.example.com`). Ajouter les variables SMTP décrites ci-dessus si les courriels doivent être envoyés.
+1. Sur Render, créer un **Blueprint** à partir du dépôt GitHub et confirmer la création de `erfolg-zentrum-api` et `erfolg-zentrum-db` définis dans `render.yaml`. Le Blueprint génère `ADMIN_PASSWORD`; conserve-le depuis les variables d'environnement du service.
+2. Sur Vercel, importer le même dépôt et sélectionner `frontend` comme **Root Directory**. Garder Vite et `dist` comme répertoire de sortie.
+3. Dans les variables du projet Vercel, ajouter `BACKEND_URL=https://erfolg-zentrum-api.onrender.com`, puis redéployer. Si Render attribue une URL différente, utiliser cette URL à la place.
+4. Render Free peut mettre le service en veille; le premier appel après une période inactive peut être lent. La base PostgreSQL `basic-256mb` est un plan payant; vérifier le tarif affiché par Render avant de confirmer la création.
 
-Avant que l'API soit déployée et que `VITE_API_BASE_URL` soit renseignée, le site statique se construit mais le formulaire et l'administration ne peuvent pas accéder aux données. Ne pas mettre de mot de passe ni d'URL contenant un secret dans le dépôt.
+Ajouter les variables SMTP sur Render si les courriels doivent être envoyés. Ne jamais publier de mot de passe ni de chaîne de connexion contenant des secrets.

@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: erfolg-zentrum-api
+    runtime: docker
+    plan: free
+    region: frankfurt
+    healthCheckPath: /api/config
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: postgres
+      - key: DATABASE_HOST
+        fromDatabase:
+          name: erfolg-zentrum-db
+          property: host
+      - key: DATABASE_PORT
+        fromDatabase:
+          name: erfolg-zentrum-db
+          property: port
+      - key: DATABASE_NAME
+        fromDatabase:
+          name: erfolg-zentrum-db
+          property: database
+      - key: DATABASE_USERNAME
+        fromDatabase:
+          name: erfolg-zentrum-db
+          property: user
+      - key: DATABASE_PASSWORD
+        fromDatabase:
+          name: erfolg-zentrum-db
+          property: password
+      - key: ADMIN_PASSWORD
+        generateValue: true
+
+databases:
+  - name: erfolg-zentrum-db
+    databaseName: erfolg
+    user: erfolg
+    plan: basic-256mb
+    region: frankfurt
