@@ -1,5 +1,6 @@
 HELP.md
 target/
+frontend/dist/
 frontend/node_modules/
 src/main/resources/static/
 data/*.mv.db

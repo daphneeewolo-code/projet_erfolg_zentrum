@@ -33,6 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestController
@@ -59,11 +60,16 @@ public class ApiController {
 
 	@GetMapping("/config")
 	public Map<String, Object> publicConfiguration() {
-		return Map.of(
-				"schoolName", "Erfolg Zentrum",
-				"courses", enrollmentService.courses(),
-				"levels", enrollmentService.levels(),
-				"centres", enrollmentService.centres());
+		Map<String, Object> config = new LinkedHashMap<>();
+		config.put("schoolName", "Erfolg Zentrum");
+		config.put("courses", enrollmentService.courses());
+		config.put("levels", enrollmentService.levels());
+		config.put("centres", enrollmentService.centres());
+		config.put("capacityPerGroup", enrollmentService.capacityPerGroup());
+		config.put("admissionsOpen", enrollmentService.isEnrollmentOpen());
+		config.put("openingDate", enrollmentService.enrollmentOpeningDate());
+		config.put("openingMarginDays", enrollmentService.openingMarginDays());
+		return config;
 	}
 
 	@PostMapping("/enrollments")
@@ -74,6 +80,7 @@ public class ApiController {
 				enrollment.getRegistrationNumber(),
 				enrollment.getFirstName(),
 				enrollment.getCourse(),
+				enrollment.getEnrollmentStatus(),
 				enrollment.getCreatedAt().toString(),
 				Base64.getEncoder().encodeToString(enrollmentService.generatePdf(enrollment)));
 		return ResponseEntity.status(HttpStatus.CREATED).body(receipt);
@@ -124,13 +131,14 @@ public class ApiController {
 	public Page<EnrollmentView> enrollments(
 			@RequestParam(required = false) String q,
 			@RequestParam(required = false) String course,
+			@RequestParam(required = false) EnrollmentStatus enrollmentStatus,
 			@RequestParam(required = false) String emailStatus,
 			@RequestParam(required = false) LocalDate from,
 			@RequestParam(required = false) LocalDate until,
 			@RequestParam(defaultValue = "0") int page,
 			@RequestParam(defaultValue = "10") int size) {
 		Page<Enrollment> result = enrollmentService.search(
-				q, course, emailStatus, from, until,
+				q, course, enrollmentStatus, emailStatus, from, until,
 				PageRequest.of(Math.max(0, page), Math.max(1, Math.min(size, 100)),
 						Sort.by(Sort.Direction.DESC, "createdAt")));
 		return result.map(EnrollmentView::from);
@@ -163,14 +171,15 @@ public class ApiController {
 	public ResponseEntity<byte[]> exportCsv(
 			@RequestParam(required = false) String q,
 			@RequestParam(required = false) String course,
+			@RequestParam(required = false) EnrollmentStatus enrollmentStatus,
 			@RequestParam(required = false) String emailStatus,
 			@RequestParam(required = false) LocalDate from,
 			@RequestParam(required = false) LocalDate until) {
-		StringBuilder csv = new StringBuilder("\uFEFFNuméro;Prénom;Nom;E-mail;Téléphone;Formation;Niveau;Centre;Date d’inscription;État e-mail\n");
+		StringBuilder csv = new StringBuilder("\uFEFFNuméro;Prénom;Nom;E-mail;Téléphone;Formation;Niveau;Centre;Statut;Date d’inscription;État e-mail\n");
 		int page = 0;
 		Page<Enrollment> results;
 		do {
-			results = enrollmentService.search(q, course, emailStatus, from, until,
+			results = enrollmentService.search(q, course, enrollmentStatus, emailStatus, from, until,
 					PageRequest.of(page++, 500, Sort.by(Sort.Direction.DESC, "createdAt")));
 			results.getContent().forEach(enrollment -> csv.append(csvRow(
 					enrollment.getRegistrationNumber(),
@@ -181,6 +190,7 @@ public class ApiController {
 					enrollment.getCourse(),
 					enrollment.getLevel(),
 					enrollment.getCentre(),
+					enrollment.getEnrollmentStatus().name(),
 					enrollment.getCreatedAt().toString(),
 					enrollment.getEmailStatus())));
 		}
@@ -244,6 +254,7 @@ public class ApiController {
 			String registrationNumber,
 			String firstName,
 			String course,
+			EnrollmentStatus enrollmentStatus,
 			String createdAt,
 			String pdfBase64) {
 	}
@@ -261,6 +272,7 @@ public class ApiController {
 			String course,
 			String level,
 			String centre,
+			EnrollmentStatus enrollmentStatus,
 			LocalDate birthDate,
 			String address,
 			String emailStatus,
@@ -278,6 +290,7 @@ public class ApiController {
 					enrollment.getCourse(),
 					enrollment.getLevel(),
 					enrollment.getCentre(),
+				enrollment.getEnrollmentStatus(),
 					enrollment.getBirthDate(),
 					enrollment.getAddress(),
 					enrollment.getEmailStatus(),

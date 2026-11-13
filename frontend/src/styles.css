@@ -213,6 +213,8 @@ button { color: inherit; }
 .status-sent { color: #47764e; background: #edf5ec; }
 .status-queued { color: #9a7a3d; background: #f7f2e7; }
 .status-failed { color: #a95143; background: #fbefed; }
+.status-confirmed { color: #47764e; background: #edf5ec; }
+.status-waitlisted { color: #8b6232; background: #f7f0e5; }
 .row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
 .row-actions button, .row-actions a { min-height: 29px; padding: 0 8px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #e6e9e2; color: #566450; background: #fff; cursor: pointer; font-size: 8px; }
 .row-actions button:hover, .row-actions a:hover { border-color: #a9b99a; background: #f8faf5; }

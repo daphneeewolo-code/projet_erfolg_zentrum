@@ -1,7 +1,12 @@
 let csrfToken = '';
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
+
+export function apiUrl(path) {
+  return `${apiBaseUrl}${path}`;
+}
 
 export async function refreshCsrf() {
-  const response = await fetch('/api/csrf');
+  const response = await fetch(apiUrl('/api/csrf'), { credentials: 'include' });
   if (!response.ok) throw new Error('Impossible de préparer la connexion sécurisée.');
   csrfToken = (await response.json()).token;
 }
@@ -14,7 +19,7 @@ export async function api(url, options = {}) {
     headers.set('X-XSRF-TOKEN', csrfToken);
   }
 
-  const response = await fetch(url, { ...options, headers });
+  const response = await fetch(apiUrl(url), { ...options, credentials: 'include', headers });
   if (response.status === 204) return null;
 
   const contentType = response.headers.get('content-type') || '';

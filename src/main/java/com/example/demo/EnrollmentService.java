@@ -3,6 +3,8 @@ package com.example.demo;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,22 +21,39 @@ public class EnrollmentService {
 	private static final List<String> LEVELS = List.of("A1", "A2", "B1", "B2", "C1");
 	private static final List<String> CENTRES = List.of(
 			"Campus de Ange Raphael", "Campus de Bessengue", "autres");
+	private final int capacityPerGroup;
+	private final LocalDate enrollmentOpeningDate;
+	private final int openingMarginDays;
 
 	private final EnrollmentRepository repository;
 	private final EnrollmentPdfService pdfService;
 	private final ApplicationEventPublisher events;
+	private final JdbcTemplate jdbcTemplate;
 
 	public EnrollmentService(
 			EnrollmentRepository repository,
 			EnrollmentPdfService pdfService,
-			ApplicationEventPublisher events) {
+			ApplicationEventPublisher events,
+			JdbcTemplate jdbcTemplate,
+			@Value("${app.enrollment.capacity:20}") int capacityPerGroup,
+			@Value("${app.enrollment.opens-on:}") String enrollmentOpeningDateRaw,
+			@Value("${app.enrollment.opening-margin-days:25}") int openingMarginDays) {
 		this.repository = repository;
 		this.pdfService = pdfService;
 		this.events = events;
+		this.jdbcTemplate = jdbcTemplate;
+		this.capacityPerGroup = capacityPerGroup;
+		this.enrollmentOpeningDate = blankToLocalDate(enrollmentOpeningDateRaw);
+		this.openingMarginDays = Math.max(0, openingMarginDays);
 	}
 
 	@Transactional
 	public Enrollment register(EnrollmentRequest request) {
+		if (!isEnrollmentOpen()) {
+			throw new IllegalStateException("Les inscriptions ne sont pas encore ouvertes.");
+		}
+		jdbcTemplate.queryForObject(
+				"SELECT lock_id FROM enrollment_capacity_lock WHERE lock_id = 1 FOR UPDATE", Integer.class);
 		String email = request.email().trim().toLowerCase(Locale.ROOT);
 		if (repository.existsByEmailIgnoreCase(email)) {
 			throw new DuplicateEnrollmentException("Une inscription existe déjà avec cette adresse e-mail.");
@@ -54,6 +73,10 @@ public class EnrollmentService {
 
 		String registrationNumber = "EZ-" + LocalDate.now().getYear() + "-"
 				+ UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT);
+		EnrollmentStatus enrollmentStatus = repository.countByCourseAndLevelAndCentreAndEnrollmentStatus(
+				request.course(), request.level(), request.centre(), EnrollmentStatus.CONFIRMED) >= capacityPerGroup
+						? EnrollmentStatus.WAITLISTED
+						: EnrollmentStatus.CONFIRMED;
 		Enrollment enrollment = repository.saveAndFlush(new Enrollment(
 				registrationNumber,
 				request.firstName().trim(),
@@ -64,17 +87,19 @@ public class EnrollmentService {
 				request.level(),
 				request.centre(),
 				request.birthDate(),
-				request.address() == null || request.address().isBlank() ? null : request.address().trim()));
+				request.address() == null || request.address().isBlank() ? null : request.address().trim(),
+				enrollmentStatus));
 		events.publishEvent(new EnrollmentRegistered(enrollment.getId()));
 		return enrollment;
 	}
 
 	@Transactional(readOnly = true)
-	public Page<Enrollment> search(String term, String course, String emailStatus,
+	public Page<Enrollment> search(String term, String course, EnrollmentStatus enrollmentStatus, String emailStatus,
 			LocalDate from, LocalDate until, Pageable pageable) {
 		return repository.search(
 				blankToNull(term),
 				blankToNull(course),
+				enrollmentStatus,
 				blankToNull(emailStatus),
 				from == null ? null : from.atStartOfDay(),
 				until == null ? null : until.plusDays(1).atStartOfDay(),
@@ -120,6 +145,22 @@ public class EnrollmentService {
 		return CENTRES;
 	}
 
+	public int capacityPerGroup() {
+		return capacityPerGroup;
+	}
+
+	public boolean isEnrollmentOpen() {
+		return enrollmentOpeningDate == null || !LocalDate.now().isBefore(enrollmentOpeningDate.minusDays(openingMarginDays));
+	}
+
+	public LocalDate enrollmentOpeningDate() {
+		return enrollmentOpeningDate;
+	}
+
+	public int openingMarginDays() {
+		return openingMarginDays;
+	}
+
 	public long countAll() {
 		return repository.count();
 	}
@@ -143,5 +184,16 @@ public class EnrollmentService {
 
 	private String blankToNull(String value) {
 		return value == null || value.isBlank() ? null : value.trim();
+	}
+
+	private LocalDate blankToLocalDate(String value) {
+		if (value == null || value.isBlank()) {
+			return null;
+		}
+		try {
+			return LocalDate.parse(value);
+		} catch (RuntimeException exception) {
+			throw new IllegalArgumentException("La date d’ouverture des inscriptions est invalide: " + value, exception);
+		}
 	}
 }

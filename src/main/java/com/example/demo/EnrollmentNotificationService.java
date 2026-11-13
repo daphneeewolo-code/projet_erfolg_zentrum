@@ -49,10 +49,15 @@ public class EnrollmentNotificationService {
 			MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 			helper.setFrom(fromAddress);
 			helper.setTo(enrollment.getEmail());
-			helper.setSubject("Votre inscription à Erfolg Zentrum — " + enrollment.getRegistrationNumber());
+			boolean waitlisted = enrollment.getEnrollmentStatus() == EnrollmentStatus.WAITLISTED;
+			helper.setSubject((waitlisted ? "Votre demande est en liste d’attente — " : "Votre inscription à Erfolg Zentrum — ")
+					+ enrollment.getRegistrationNumber());
 			helper.setText("Bonjour " + enrollment.getFirstName() + ",\n\n"
-					+ "Nous avons bien reçu votre inscription en " + enrollment.getCourse() + ". "
-					+ "Vous trouverez votre fiche d’inscription en pièce jointe.\n\n"
+					+ (waitlisted
+							? "Votre demande en " + enrollment.getCourse() + " a été ajoutée à la liste d’attente du groupe sélectionné. "
+									+ "L’équipe vous contactera si une place se libère. "
+							: "Nous avons bien reçu votre inscription en " + enrollment.getCourse() + ". ")
+					+ "Vous trouverez votre fiche en pièce jointe.\n\n"
 					+ "Votre numéro d’inscription : " + enrollment.getRegistrationNumber()
 					+ "\n\nL’équipe Erfolg Zentrum — Douala", false);
 			helper.addAttachment(enrollment.getRegistrationNumber() + ".pdf",

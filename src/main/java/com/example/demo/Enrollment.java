@@ -2,6 +2,8 @@ package com.example.demo;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -56,6 +58,10 @@ public class Enrollment {
 	@Column(length = 300)
 	private String address;
 
+	@Enumerated(EnumType.STRING)
+	@Column(name = "enrollment_status", nullable = false, length = 20)
+	private EnrollmentStatus enrollmentStatus = EnrollmentStatus.CONFIRMED;
+
 	@Column(nullable = false, length = 20)
 	private String emailStatus = "QUEUED";
 
@@ -69,7 +75,8 @@ public class Enrollment {
 	}
 
 	public Enrollment(String registrationNumber, String firstName, String lastName, String email,
-			String phone, String course, String level, String centre, LocalDate birthDate, String address) {
+			String phone, String course, String level, String centre, LocalDate birthDate, String address,
+			EnrollmentStatus enrollmentStatus) {
 		this.registrationNumber = registrationNumber;
 		this.firstName = firstName;
 		this.lastName = lastName;
@@ -80,6 +87,7 @@ public class Enrollment {
 		this.centre = centre;
 		this.birthDate = birthDate;
 		this.address = address;
+		this.enrollmentStatus = enrollmentStatus;
 		this.createdAt = Instant.now();
 	}
 
@@ -125,6 +133,10 @@ public class Enrollment {
 
 	public String getAddress() {
 		return address;
+	}
+
+	public EnrollmentStatus getEnrollmentStatus() {
+		return enrollmentStatus;
 	}
 
 	public String getEmailStatus() {

@@ -28,6 +28,14 @@ function App() {
       .catch((cause) => setError(cause.message));
   }, []);
 
+  const admissionsOpen = config
+    ? !config.openingDate || Date.now() >= new Date(`${config.openingDate}T00:00:00`).getTime() - (Number(config.openingMarginDays) || 0) * 86_400_000
+    : true;
+
+  const admissionsStatus = config?.openingDate
+    ? (admissionsOpen ? 'Admissions 2026–27 ouvertes' : `Ouverture des inscriptions le ${new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long' }).format(new Date(`${config.openingDate}T00:00:00`))}`)
+    : 'Admissions 2026–27 ouvertes';
+
   function update(event) {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
   }
@@ -58,7 +66,7 @@ function App() {
       <header className="site-header">
         <Brand />
         <div className="header-right">
-          <span className="header-open"><i /> Admissions 2026–27 ouvertes</span>
+          <span className="header-open"><i /> {admissionsStatus}</span>
           <a className="admin-link" href="/admin.html">Espace administration <Icon name="arrow" size={16} /></a>
         </div>
       </header>
@@ -88,17 +96,21 @@ function App() {
             {receipt ? (
               <div className="success-state">
                 <span className="success-icon"><Icon name="check" size={29} /></span>
-                <div className="eyebrow"><span /> DEMANDE ENREGISTRÉE</div>
+                <div className="eyebrow"><span />{receipt.enrollmentStatus === 'WAITLISTED' ? ' LISTE D’ATTENTE' : ' DEMANDE ENREGISTRÉE'}</div>
                 <h2>Un beau début,<br /><em>{receipt.firstName}.</em></h2>
-                <p>Votre demande a bien été transmise à l’équipe d’Erfolg Zentrum. Nous sommes ravis de vous accompagner.</p>
+                <p>{receipt.enrollmentStatus === 'WAITLISTED'
+                  ? 'Le groupe choisi est complet. Votre demande est enregistrée sur la liste d’attente; l’équipe vous contactera si une place se libère.'
+                  : 'Votre demande a bien été transmise à l’équipe d’Erfolg Zentrum. Nous sommes ravis de vous accompagner.'}</p>
                 <div className="receipt-number"><span>VOTRE NUMÉRO D’INSCRIPTION</span><strong>{receipt.registrationNumber}</strong><small>Conservez-le pour le suivi de votre dossier.</small></div>
-                <div className="success-note"><Icon name="check" size={17} /> Votre fiche d’inscription est prête à être téléchargée.</div>
+                <div className="success-note"><Icon name="check" size={17} />{receipt.enrollmentStatus === 'WAITLISTED'
+                  ? ' Votre fiche de demande est prête à être téléchargée.'
+                  : ' Votre fiche d’inscription est prête à être téléchargée.'}</div>
                 <button className="button-primary full-width" type="button" onClick={() => downloadPdf(receipt.pdfBase64, `${receipt.registrationNumber}.pdf`)}>
                   Télécharger ma fiche PDF <Icon name="download" size={18} />
                 </button>
                 <button className="button-text" type="button" onClick={() => window.location.reload()}>Effectuer une nouvelle inscription</button>
               </div>
-            ) : (
+            ) : admissionsOpen ? (
               <>
                 <div className="card-heading">
                   <div className="card-kicker"><span className="kicker-number">01</span><span>VOTRE CANDIDATURE</span><span className="kicker-line" /><span className="kicker-session">2026—27</span></div>
@@ -143,6 +155,15 @@ function App() {
                   <p className="privacy-note"><Icon name="lock" size={15} /> Vos informations restent confidentielles et accessibles uniquement à l’administration.</p>
                 </form>
               </>
+            ) : (
+              <div className="success-state">
+                <span className="success-icon"><Icon name="calendar" size={29} /></span>
+                <div className="eyebrow"><span /> INSCRIPTIONS NON OUVERTES</div>
+                <h2>Les inscriptions ouvrent bientôt.</h2>
+                <p>{config?.openingDate
+                  ? `La plateforme s’ouvre automatiquement ${Number(config.openingMarginDays) || 25} jours avant la date annoncée, soit le ${new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long' }).format(new Date(`${config.openingDate}T00:00:00`))}.`
+                  : 'Les candidatures seront bientôt ouvertes. Revenez plus tard.'}</p>
+              </div>
             )}
           </section>
         </section>

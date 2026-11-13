@@ -10,12 +10,21 @@ CREATE TABLE IF NOT EXISTS enrollments (
     centre VARCHAR(80),
     birth_date DATE,
     address VARCHAR(300),
+    enrollment_status VARCHAR(20) NOT NULL DEFAULT 'CONFIRMED',
     email_status VARCHAR(20) NOT NULL DEFAULT 'QUEUED',
     email_error VARCHAR(500),
     created_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
 ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS centre VARCHAR(80);
+ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS enrollment_status VARCHAR(20) NOT NULL DEFAULT 'CONFIRMED';
 
 CREATE INDEX IF NOT EXISTS idx_enrollment_email ON enrollments (email);
 CREATE INDEX IF NOT EXISTS idx_enrollment_created ON enrollments (created_at);
+
+CREATE TABLE IF NOT EXISTS enrollment_capacity_lock (
+    lock_id INTEGER PRIMARY KEY
+);
+
+INSERT INTO enrollment_capacity_lock (lock_id)
+SELECT 1 WHERE NOT EXISTS (SELECT 1 FROM enrollment_capacity_lock WHERE lock_id = 1);

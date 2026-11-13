@@ -14,6 +14,9 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
 
 	boolean existsByEmailIgnoreCase(String email);
 
+	long countByCourseAndLevelAndCentreAndEnrollmentStatus(
+			String course, String level, String centre, EnrollmentStatus enrollmentStatus);
+
 	Optional<Enrollment> findByRegistrationNumber(String registrationNumber);
 
 	@Query("""
@@ -24,6 +27,7 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
 				or lower(e.email) like lower(concat('%', :term, '%'))
 				or lower(e.registrationNumber) like lower(concat('%', :term, '%')))
 			and (:course is null or e.course = :course)
+			and (:enrollmentStatus is null or e.enrollmentStatus = :enrollmentStatus)
 			and (:emailStatus is null or e.emailStatus = :emailStatus)
 			and (:from is null or e.createdAt >= :from)
 			and (:until is null or e.createdAt < :until)
@@ -31,6 +35,7 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
 	Page<Enrollment> search(
 			@Param("term") String term,
 			@Param("course") String course,
+			@Param("enrollmentStatus") EnrollmentStatus enrollmentStatus,
 			@Param("emailStatus") String emailStatus,
 			@Param("from") LocalDateTime from,
 			@Param("until") LocalDateTime until,

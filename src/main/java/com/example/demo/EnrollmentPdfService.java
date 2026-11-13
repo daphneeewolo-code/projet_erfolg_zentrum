@@ -41,7 +41,9 @@ public class EnrollmentPdfService {
 			header.setAlignment(Element.ALIGN_CENTER);
 			document.add(header);
 
-			Paragraph subtitle = new Paragraph("FICHE D'INSCRIPTION", title);
+			Paragraph subtitle = new Paragraph(
+					enrollment.getEnrollmentStatus() == EnrollmentStatus.WAITLISTED
+							? "DEMANDE EN LISTE D'ATTENTE" : "FICHE D'INSCRIPTION", title);
 			subtitle.setAlignment(Element.ALIGN_CENTER);
 			subtitle.setSpacingBefore(34);
 			subtitle.setSpacingAfter(10);

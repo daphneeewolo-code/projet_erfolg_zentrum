@@ -8,7 +8,7 @@ const frontendDirectory = fileURLToPath(new URL('.', import.meta.url));
 export default defineConfig({
   plugins: [react()],
   build: {
-    outDir: '../src/main/resources/static',
+    outDir: process.env.VERCEL ? 'dist' : '../src/main/resources/static',
     emptyOutDir: true,
     rollupOptions: {
       input: {

@@ -21,6 +21,8 @@ $env:ADMIN_PASSWORD = "choisir-un-mot-de-passe-long"
 Ouvrir `http://localhost:8080/` pour le formulaire d'inscription et `http://localhost:8080/admin.html` pour l'administration. Le nom d'utilisateur administrateur vaut `admin` par défaut et peut être changé avec `ADMIN_USERNAME`. Le mot de passe `ADMIN_PASSWORD` est obligatoire.
 
 H2 conserve ses données localement dans `data/`; ces fichiers ne doivent pas être publiés.
+La capacité par groupe (formation + niveau + centre) est de 20 places par défaut; elle peut être ajustée avec `APP_ENROLLMENT_CAPACITY`. Les demandes au-delà de cette limite sont enregistrées sur la liste d’attente.
+Les inscriptions peuvent aussi s’ouvrir automatiquement à partir d’une date de référence grâce à `APP_ENROLLMENT_OPENS_ON` et `APP_ENROLLMENT_OPENING_MARGIN_DAYS` (25 par défaut). Si une date est renseignée, la plateforme s’ouvre automatiquement 25 jours avant cette date et bloque l’enregistrement avant ce moment ; la liste d’attente reste active si le groupe est complet.
 
 ## Démarrage avec PostgreSQL
 
@@ -59,11 +61,11 @@ Pop-Location
 
 ## Déploiement sur Vercel
 
-Le `Dockerfile` déploie l'application Spring Boot et le frontend ensemble avec le runtime Container de Vercel. Ce runtime est actuellement en bêta. Le profil PostgreSQL est activé dans l'image; H2 n'est pas adapté à un déploiement sans disque persistant.
+Vercel héberge le frontend React; l'API Spring Boot doit être hébergée séparément sur un service compatible avec les conteneurs et reliée à une base PostgreSQL persistante.
 
-1. Importer le dépôt GitHub dans Vercel et choisir le preset **Container** si Vercel ne le détecte pas automatiquement.
-2. Ajouter une base PostgreSQL accessible depuis Internet et définir dans les variables du projet `DATABASE_URL` (format JDBC, par exemple `jdbc:postgresql://hote:5432/base?sslmode=require`), `DATABASE_USERNAME`, `DATABASE_PASSWORD` et `ADMIN_PASSWORD`.
-3. Définir `PORT` à `8080` dans les variables du projet Vercel.
-4. Ajouter les variables SMTP décrites ci-dessus si les courriels doivent être envoyés.
+1. Importer le dépôt GitHub dans Vercel. Dans **Root Directory**, choisir `frontend`; utiliser le preset **Vite** et le répertoire de sortie `dist`.
+2. Après avoir déployé l'API, ajouter la variable Vercel `VITE_API_BASE_URL` avec son origine publique, par exemple `https://api.example.com` (sans `/` final), puis redéployer le frontend.
+3. Sur l'hébergement de l'API, définir `DATABASE_URL` (format JDBC, par exemple `jdbc:postgresql://hote:5432/base?sslmode=require`), `DATABASE_USERNAME`, `DATABASE_PASSWORD` et `ADMIN_PASSWORD`. Définir aussi `APP_CORS_ALLOWED_ORIGIN` à l'origine exacte du frontend Vercel, `SESSION_COOKIE_SECURE=true` et `CSRF_COOKIE_SECURE=true`. La capacité s’ajuste avec `APP_ENROLLMENT_CAPACITY` (20 par défaut).
+4. Pour éviter le blocage des cookies de session par les navigateurs, utiliser un domaine personnalisé commun pour le frontend et l'API (par exemple `www.example.com` et `api.example.com`). Ajouter les variables SMTP décrites ci-dessus si les courriels doivent être envoyés.
 
-Ne pas mettre de mot de passe ni d'URL contenant un secret dans le dépôt. Vercel fournira l'URL publique après le déploiement.
+Avant que l'API soit déployée et que `VITE_API_BASE_URL` soit renseignée, le site statique se construit mais le formulaire et l'administration ne peuvent pas accéder aux données. Ne pas mettre de mot de passe ni d'URL contenant un secret dans le dépôt.

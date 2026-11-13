@@ -20,6 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties = {
 		"app.admin.password=TestAdminPassword123!",
+		"app.enrollment.capacity=2",
 		"spring.datasource.url=jdbc:h2:mem:erfolg-test;DB_CLOSE_DELAY=-1"
 })
 @AutoConfigureMockMvc
@@ -71,7 +72,8 @@ class DemoApplicationTests {
 				.andExpect(jsonPath("$.levels[4]").value("C1"))
 				.andExpect(jsonPath("$.centres[0]").value("Campus de Ange Raphael"))
 				.andExpect(jsonPath("$.centres[1]").value("Campus de Bessengue"))
-				.andExpect(jsonPath("$.centres[2]").value("autres"));
+				.andExpect(jsonPath("$.centres[2]").value("autres"))
+				.andExpect(jsonPath("$.capacityPerGroup").value(2));
 	}
 
 	@Test
@@ -92,6 +94,45 @@ class DemoApplicationTests {
 		assertThrows(DuplicateEnrollmentException.class,
 				() -> enrollmentService.register(request(" STUDENT@example.com ")));
 		assertTrue(enrollmentRepository.count() == 1);
+	}
+
+	@Test
+	void registrationsBeyondGroupCapacityAreAddedToWaitlist() {
+		Enrollment first = enrollmentService.register(request("first@example.com"));
+		Enrollment second = enrollmentService.register(request("second@example.com"));
+		Enrollment waiting = enrollmentService.register(request("waiting@example.com"));
+		Enrollment otherCentre = enrollmentService.register(
+				request("other-centre@example.com", "A1", "Campus de Bessengue"));
+
+		assertEquals(EnrollmentStatus.CONFIRMED, first.getEnrollmentStatus());
+		assertEquals(EnrollmentStatus.CONFIRMED, second.getEnrollmentStatus());
+		assertEquals(EnrollmentStatus.WAITLISTED, waiting.getEnrollmentStatus());
+		assertEquals(EnrollmentStatus.CONFIRMED, otherCentre.getEnrollmentStatus());
+		assertEquals(2, enrollmentRepository.countByCourseAndLevelAndCentreAndEnrollmentStatus(
+				"Cours allemand", "A1", "Campus de Ange Raphael", EnrollmentStatus.CONFIRMED));
+	}
+
+	@Test
+	@WithMockUser(roles = "ADMIN")
+	void waitlistedRegistrationIsReturnedAndFilterableInAdminApi() throws Exception {
+		enrollmentService.register(request("seat-one@example.com"));
+		enrollmentService.register(request("seat-two@example.com"));
+
+		mockMvc.perform(post("/api/enrollments")
+					.with(csrf())
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{"firstName":"Amina","lastName":"Njoya","email":"waiting@example.com",
+							"phone":"+237 699 000 113","course":"Cours allemand","level":"A1",
+							"centre":"Campus de Ange Raphael"}
+							"""))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.enrollmentStatus").value("WAITLISTED"));
+
+		mockMvc.perform(get("/api/admin/enrollments").param("enrollmentStatus", "WAITLISTED"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.totalElements").value(1))
+				.andExpect(jsonPath("$.content[0].enrollmentStatus").value("WAITLISTED"));
 	}
 
 	@Test

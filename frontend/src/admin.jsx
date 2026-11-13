@@ -1,11 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Brand, Icon } from './Brand.jsx';
-import { api, formatDate, refreshCsrf } from './api.js';
+import { api, apiUrl, formatDate, refreshCsrf } from './api.js';
 import './styles.css';
 
-const emptyFilters = { q: '', course: '', emailStatus: '', from: '' };
-const statusNames = { SENT: 'Envoyé', QUEUED: 'En attente', FAILED: 'Échec' };
+const emptyFilters = { q: '', course: '', enrollmentStatus: '', emailStatus: '', from: '' };
+const statusNames = {
+  SENT: 'Envoyé', QUEUED: 'En attente', FAILED: 'Échec',
+  CONFIRMED: 'Confirmée', WAITLISTED: 'Liste d’attente',
+};
 
 function StatusPill({ status }) {
   return <span className={`status-pill status-${(status || 'queued').toLowerCase()}`}><i />{statusNames[status] || status}</span>;
@@ -125,7 +128,7 @@ function Dashboard({ username, courses, onLogout }) {
       <main className="admin-main">
         <header className="admin-topbar"><div><span className="eyebrow">ERFOLG ZENTRUM <i /> ADMINISTRATION</span><strong>Gestion des candidatures</strong></div><div className="topbar-actions"><a className="admin-back-link" href="/">Voir le site <Icon name="arrow" size={16} /></a><button className="topbar-logout" type="button" onClick={onLogout}>Déconnexion</button></div></header>
         <section className="admin-content">
-          <div className="admin-welcome"><div><span className="eyebrow"><span /> VUE D’ENSEMBLE</span><h1>Bonjour, <em>{username}.</em></h1><p>Un aperçu clair de la vie de votre centre.</p></div><a className="button-outline" href={`/api/admin/export.csv?${exportParams}`}><Icon name="download" size={17} /> Exporter les dossiers</a></div>
+          <div className="admin-welcome"><div><span className="eyebrow"><span /> VUE D’ENSEMBLE</span><h1>Bonjour, <em>{username}.</em></h1><p>Un aperçu clair de la vie de votre centre.</p></div><a className="button-outline" href={apiUrl(`/api/admin/export.csv?${exportParams}`)}><Icon name="download" size={17} /> Exporter les dossiers</a></div>
           {error && <div className="form-alert" role="alert">{error}</div>}
           {notice && <div className="notice-banner" role="status">{notice}<button type="button" aria-label="Fermer" onClick={() => setNotice('')}><Icon name="close" size={16} /></button></div>}
           <div className="metrics-grid">
@@ -140,11 +143,12 @@ function Dashboard({ username, courses, onLogout }) {
             <div className="filters-bar">
               <label className="search-field"><Icon name="search" size={18} /><input type="search" placeholder="Nom, e-mail ou numéro…" aria-label="Rechercher une candidature" value={filters.q} onChange={(event) => setFilters({ ...filters, q: event.target.value })} /></label>
               <select aria-label="Filtrer par formation" value={filters.course} onChange={(event) => setFilters({ ...filters, course: event.target.value })}><option value="">Toutes les formations</option>{courses.map((course) => <option key={course}>{course}</option>)}</select>
+              <select aria-label="Filtrer par statut d’inscription" value={filters.enrollmentStatus} onChange={(event) => setFilters({ ...filters, enrollmentStatus: event.target.value })}><option value="">Tous les statuts</option><option value="CONFIRMED">Confirmée</option><option value="WAITLISTED">Liste d’attente</option></select>
               <select aria-label="Filtrer par état d’e-mail" value={filters.emailStatus} onChange={(event) => setFilters({ ...filters, emailStatus: event.target.value })}><option value="">Tous les e-mails</option><option value="SENT">Envoyé</option><option value="QUEUED">En attente</option><option value="FAILED">Échec</option></select>
               <input aria-label="Candidatures à partir de cette date" type="date" value={filters.from} onChange={(event) => setFilters({ ...filters, from: event.target.value })} />
             </div>
-            <div className="table-scroll"><table className="records-table"><thead><tr><th>ÉTUDIANT</th><th>N° DE DOSSIER</th><th>FORMATION</th><th>NIVEAU</th><th>CENTRE</th><th>DATE</th><th>ÉTAT E-MAIL</th><th /></tr></thead>
-              <tbody>{data?.content.map((item) => <tr key={item.id}><td><div className="student-cell"><span className="student-avatar">{item.firstName[0]}{item.lastName[0]}</span><span><strong>{item.firstName} {item.lastName}</strong><small>{item.email}</small></span></div></td><td className="registration-id">{item.registrationNumber}</td><td>{item.course}</td><td>{item.level}</td><td>{item.centre || '—'}</td><td>{formatDate(item.createdAt)}</td><td><StatusPill status={item.emailStatus} /></td><td><div className="row-actions"><button type="button" onClick={() => openDetails(item.id)}>Détails</button><a href={`/api/admin/enrollments/${item.id}/pdf`} aria-label={`Télécharger le dossier ${item.registrationNumber}`}><Icon name="download" size={16} /></a></div></td></tr>)}</tbody>
+            <div className="table-scroll"><table className="records-table"><thead><tr><th>ÉTUDIANT</th><th>N° DE DOSSIER</th><th>FORMATION</th><th>NIVEAU</th><th>CENTRE</th><th>STATUT</th><th>DATE</th><th>ÉTAT E-MAIL</th><th /></tr></thead>
+              <tbody>{data?.content.map((item) => <tr key={item.id}><td><div className="student-cell"><span className="student-avatar">{item.firstName[0]}{item.lastName[0]}</span><span><strong>{item.firstName} {item.lastName}</strong><small>{item.email}</small></span></div></td><td className="registration-id">{item.registrationNumber}</td><td>{item.course}</td><td>{item.level}</td><td>{item.centre || '—'}</td><td><StatusPill status={item.enrollmentStatus} /></td><td>{formatDate(item.createdAt)}</td><td><StatusPill status={item.emailStatus} /></td><td><div className="row-actions"><button type="button" onClick={() => openDetails(item.id)}>Détails</button><a href={apiUrl(`/api/admin/enrollments/${item.id}/pdf`)} aria-label={`Télécharger le dossier ${item.registrationNumber}`}><Icon name="download" size={16} /></a></div></td></tr>)}</tbody>
             </table></div>
             {loading && !data && <div className="empty-results"><strong>Chargement des dossiers…</strong></div>}
             {data && !data.content.length && !loading && <div className="empty-results"><span><Icon name="search" size={22} /></span><strong>Aucune candidature trouvée</strong><small>Essayez de modifier votre recherche ou vos filtres.</small></div>}
@@ -157,8 +161,8 @@ function Dashboard({ username, courses, onLogout }) {
         <section className="details-modal" role="dialog" aria-modal="true" aria-labelledby="details-title">
           <button className="modal-close" type="button" aria-label="Fermer" onClick={() => setSelected(null)}><Icon name="close" /></button>
           <span className="eyebrow"><span /> DOSSIER ÉTUDIANT</span><h2 id="details-title">{selected.firstName} {selected.lastName}</h2><p className="modal-registration">{selected.registrationNumber}</p>
-          <div className="details-grid">{[['E-mail', selected.email], ['Téléphone', selected.phone], ['Formation', selected.course], ['Niveau', selected.level], ['Centre', selected.centre || 'Non renseigné'], ['Date de naissance', selected.birthDate || 'Non renseignée'], ['Ville / quartier', selected.address || 'Non renseigné'], ['Inscription reçue', formatDate(selected.createdAt)], ['Statut de l’e-mail', <StatusPill status={selected.emailStatus} />], ...(selected.emailError ? [['Dernière erreur', selected.emailError]] : [])].map(([label, value]) => <div className="detail-item" key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>
-          <div className="modal-actions"><button className="button-primary" type="button" onClick={() => resend(selected.id)}>Renvoyer le PDF par e-mail <Icon name="arrow" size={17} /></button><a className="button-outline" href={`/api/admin/enrollments/${selected.id}/pdf`}><Icon name="download" size={16} /> Télécharger le PDF</a></div>
+          <div className="details-grid">{[['E-mail', selected.email], ['Téléphone', selected.phone], ['Formation', selected.course], ['Niveau', selected.level], ['Centre', selected.centre || 'Non renseigné'], ['Statut de l’inscription', <StatusPill status={selected.enrollmentStatus} />], ['Date de naissance', selected.birthDate || 'Non renseignée'], ['Ville / quartier', selected.address || 'Non renseigné'], ['Inscription reçue', formatDate(selected.createdAt)], ['Statut de l’e-mail', <StatusPill status={selected.emailStatus} />], ...(selected.emailError ? [['Dernière erreur', selected.emailError]] : [])].map(([label, value]) => <div className="detail-item" key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>
+          <div className="modal-actions"><button className="button-primary" type="button" onClick={() => resend(selected.id)}>Renvoyer le PDF par e-mail <Icon name="arrow" size={17} /></button><a className="button-outline" href={apiUrl(`/api/admin/enrollments/${selected.id}/pdf`)}><Icon name="download" size={16} /> Télécharger le PDF</a></div>
         </section>
       </div>}
     </div>
