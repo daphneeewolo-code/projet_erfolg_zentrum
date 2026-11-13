@@ -38,6 +38,15 @@ class DemoApplicationTests {
 	@Autowired
 	private EnrollmentPdfService pdfService;
 
+	@Autowired
+	private UserAccountRepository userAccountRepository;
+
+	@Autowired
+	private RoleRepository roleRepository;
+
+	@org.springframework.beans.factory.annotation.Value("${app.admin.username}")
+	private String bootstrapAdministratorUsername;
+
 	@BeforeEach
 	void cleanDatabase() {
 		enrollmentRepository.deleteAll();
@@ -45,6 +54,23 @@ class DemoApplicationTests {
 
 	@Test
 	void contextLoads() {
+	}
+
+	@Test
+	void bootstrapAdministratorAndAllSchoolRolesArePersisted() {
+		UserAccount administrator = userAccountRepository
+				.findByUsernameIgnoreCase(bootstrapAdministratorUsername)
+				.orElseThrow();
+
+		assertTrue(administrator.isEnabled());
+		assertTrue(administrator.hasRole(RoleName.ADMIN));
+		assertTrue(administrator.getAuthorities().stream()
+				.anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN")));
+		assertEquals(
+				java.util.Arrays.stream(RoleName.values()).collect(java.util.stream.Collectors.toSet()),
+				roleRepository.findAll().stream()
+						.map(Role::getName)
+						.collect(java.util.stream.Collectors.toSet()));
 	}
 
 	@Test

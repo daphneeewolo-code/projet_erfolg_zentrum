@@ -24,6 +24,10 @@ H2 conserve ses données localement dans `data/`; ces fichiers ne doivent pas ê
 La capacité par groupe (formation + niveau + centre) est de 20 places par défaut; elle peut être ajustée avec `APP_ENROLLMENT_CAPACITY`. Les demandes au-delà de cette limite sont enregistrées sur la liste d’attente.
 Les inscriptions peuvent aussi s’ouvrir automatiquement à partir d’une date de référence grâce à `APP_ENROLLMENT_OPENS_ON` et `APP_ENROLLMENT_OPENING_MARGIN_DAYS` (25 par défaut). Si une date est renseignée, la plateforme s’ouvre automatiquement 25 jours avant cette date et bloque l’enregistrement avant ce moment ; la liste d’attente reste active si le groupe est complet.
 
+## Socle des comptes et des rôles
+
+Les rôles persistants du cahier des charges sont `ADMIN`, `SECRETARY`, `TEACHER`, `STUDENT` et `PARENT`. Au premier démarrage, l’application crée le compte administrateur configuré par `ADMIN_USERNAME` et `ADMIN_PASSWORD` s’il n’existe pas et lui attribue le rôle `ADMIN`. Son mot de passe est encodé avant stockage. Cette première étape fournit le modèle de données et l’authentification persistante; l’administration des comptes et les espaces propres au secrétariat, aux enseignants, aux élèves et aux parents restent à réaliser.
+
 ## Démarrage avec PostgreSQL
 
 Définir les variables avant de démarrer la base et l'application:
